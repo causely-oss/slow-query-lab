@@ -1,0 +1,128 @@
+services:
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    environment:
+      - ENABLE_LOGS_ALL=true
+    volumes:
+      # Provision dashboards automatically (mount to otel-lgtm's provisioning path)
+      - ./grafana/provisioning/dashboards/slowsql.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/slowsql.yaml:ro
+      - ./slowsql-dashboard-v1.json:/otel-lgtm/slowsql-dashboard-v1.json:ro
+      - ./slowsql-dashboard-v2.json:/otel-lgtm/slowsql-dashboard-v2.json:ro
+      - ./slowsql-dashboard-v3.json:/otel-lgtm/slowsql-dashboard-v3.json:ro
+      # Provision datasources with exemplar linking to Tempo
+      - ./grafana/provisioning/datasources/prometheus-exemplars.yaml:/otel-lgtm/grafana/conf/provisioning/datasources/prometheus-exemplars.yaml:ro
+      # Mount Prometheus rules for anomaly detection
+      - ./prometheus-rules:/etc/prometheus/rules:ro
+      # Override Prometheus config to load rules
+      - ./prometheus-custom.yaml:/otel-lgtm/prometheus.yaml:ro
+    ports:
+      - "3001:3000"  # Grafana (mapped to 3001 to avoid conflict)
+      # OTLP ports not exposed to host - otelcol handles ingestion and forwards to lgtm internally
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: demo
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.144.0
+    volumes:
+      - ./otelcol.yaml:/etc/otelcol.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    command: ["--config=/etc/otelcol.yaml"]
+    depends_on:
+      - lgtm
+      - postgres
+
+  api-user:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_DSN: postgresql://postgres:postgres@postgres:5432/demo?sslmode=disable
+      OTEL_EXPORTER_OTLP_ENDPOINT: otelcol:4317
+      OTEL_SERVICE_NAME: album-user-api
+      DEPLOYMENT_ENV: lab
+      PORT: 8080
+      # Opt into stable database semantic conventions
+      OTEL_SEMCONV_STABILITY_OPT_IN: database
+    command: /app/api-user
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - otelcol
+
+  api-admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_DSN: postgresql://postgres:postgres@postgres:5432/demo?sslmode=disable
+      OTEL_EXPORTER_OTLP_ENDPOINT: otelcol:4317
+      OTEL_SERVICE_NAME: album-admin-api
+      DEPLOYMENT_ENV: lab
+      PORT: 8080
+      # Opt into stable database semantic conventions
+      OTEL_SEMCONV_STABILITY_OPT_IN: database
+    command: /app/api-admin
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+      - otelcol
+
+  traffic:
+    image: curlimages/curl:8.10.1
+    depends_on:
+      - api-user
+      - api-admin
+    command:
+      - sh
+      - -c
+      - |
+        echo "Generating traffic with different patterns...";
+        COUNTER=0;
+        while true; do
+          COUNTER=$((COUNTER + 1));
+          
+          # === FAST BUT FREQUENT (high traffic, low latency) ===
+          # These are called very often to create high-impact but fast queries
+          curl -s http://api-user:8080/albums/42 > /dev/null;
+          curl -s http://api-user:8080/albums/100 > /dev/null;
+          curl -s http://api-user:8080/albums/200 > /dev/null;
+          curl -s http://api-user:8080/albums/recent?limit=20 > /dev/null;
+          curl -s "http://api-user:8080/albums/by-artist/Artist%2010" > /dev/null;
+          curl -s http://api-admin:8080/albums/health-check > /dev/null;
+          curl -s "http://api-admin:8080/albums?limit=10&offset=0" > /dev/null;
+          
+          # === ANOMALY PATTERNS (regular calls that occasionally spike) ===
+          # Called regularly so anomalies can be detected relative to baseline
+          curl -s http://api-admin:8080/albums/stats > /dev/null;
+          curl -s http://api-admin:8080/albums/analytics > /dev/null;
+          
+          # === SLOW BUT RARE (low traffic, high latency) ===
+          # Called infrequently to create slow queries with low count
+          if [ $((COUNTER % 20)) -eq 0 ]; then
+            curl -s "http://api-user:8080/albums/search?q=Album" > /dev/null;
+          fi
+          if [ $((COUNTER % 30)) -eq 0 ]; then
+            curl -s http://api-user:8080/albums/complex-report > /dev/null;
+          fi
+          if [ $((COUNTER % 40)) -eq 0 ]; then
+            curl -s "http://api-user:8080/albums/full-text-search?q=test" > /dev/null;
+          fi
+          if [ $((COUNTER % 50)) -eq 0 ]; then
+            curl -s "http://api-admin:8080/albums/export?format=json" > /dev/null;
+          fi
+          
+          sleep 0.15;
+        done

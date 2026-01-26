@@ -1,0 +1,103 @@
+groups:
+  ####################################################################################
+  #                       Slow SQL Anomaly Detection - Adaptive Strategy            #
+  ####################################################################################
+
+  - name: SlowSQLAnomalyTaggingAdaptive
+    interval: 30s
+    rules:
+      # Tag query latency (p95) for anomaly detection
+      # This captures the 95th percentile latency for database queries
+      - record: anomaly:slowsql:latency:p95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (service_name, db_system, db_name, span_name, db_query_text, le) (
+              rate(traces_span_metrics_duration_milliseconds_bucket{
+                span_kind="SPAN_KIND_CLIENT",
+                db_system=~".+",
+                db_query_text=~".+"
+              }[5m])
+            )
+          )
+        labels:
+          anomaly_name: "slowsql_latency_p95"
+          anomaly_type: "latency"
+          anomaly_strategy: "adaptive"
+
+      # Tag query rate for anomaly detection
+      # This captures the rate of database queries per second
+      - record: anomaly:slowsql:query:rate
+        expr: |
+          sum by (service_name, db_system, db_name, span_name, db_query_text) (
+            rate(traces_span_metrics_calls_total{
+              span_kind="SPAN_KIND_CLIENT",
+              db_system=~".+",
+              db_query_text=~".+"
+            }[5m])
+          )
+        labels:
+          anomaly_name: "slowsql_query_rate"
+          anomaly_type: "requests"
+          anomaly_strategy: "adaptive"
+
+      # Tag average query duration for anomaly detection
+      # This captures the average duration of database queries
+      - record: anomaly:slowsql:duration:avg
+        expr: |
+          sum by (service_name, db_system, db_name, span_name, db_query_text) (
+            rate(traces_span_metrics_duration_milliseconds_sum{
+              span_kind="SPAN_KIND_CLIENT",
+              db_system=~".+",
+              db_query_text=~".+"
+            }[5m])
+          ) / 
+          sum by (service_name, db_system, db_name, span_name, db_query_text) (
+            rate(traces_span_metrics_duration_milliseconds_count{
+              span_kind="SPAN_KIND_CLIENT",
+              db_system=~".+",
+              db_query_text=~".+"
+            }[5m])
+          )
+        labels:
+          anomaly_name: "slowsql_duration_avg"
+          anomaly_type: "latency"
+          anomaly_strategy: "adaptive"
+
+  ####################################################################################
+  #                       Slow SQL Anomaly Detection - Robust Strategy              #
+  ####################################################################################
+
+  - name: SlowSQLAnomalyTaggingRobust
+    interval: 30s
+    rules:
+      # Tag query latency (p95) for anomaly detection using robust strategy
+      - record: anomaly:slowsql:latency:p95:robust
+        expr: |
+          histogram_quantile(0.95,
+            sum by (service_name, db_system, db_name, span_name, db_query_text, le) (
+              rate(traces_span_metrics_duration_milliseconds_bucket{
+                span_kind="SPAN_KIND_CLIENT",
+                db_system=~".+",
+                db_query_text=~".+"
+              }[5m])
+            )
+          )
+        labels:
+          anomaly_name: "slowsql_latency_p95_robust"
+          anomaly_type: "latency"
+          anomaly_strategy: "robust"
+
+      # Tag query rate for anomaly detection using robust strategy
+      - record: anomaly:slowsql:query:rate:robust
+        expr: |
+          sum by (service_name, db_system, db_name, span_name, db_query_text) (
+            rate(traces_span_metrics_calls_total{
+              span_kind="SPAN_KIND_CLIENT",
+              db_system=~".+",
+              db_query_text=~".+"
+            }[5m])
+          )
+        labels:
+          anomaly_name: "slowsql_query_rate_robust"
+          anomaly_type: "requests"
+          anomaly_strategy: "robust"

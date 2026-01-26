@@ -1,0 +1,577 @@
+{
+  "uid": "slowsql-v2",
+  "title": "Slow SQL - Traffic Weighted",
+  "description": "Database query duration analysis weighted by traffic volume (Impact = Avg Duration × Count)",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Highest Impact Queries by Root Operation",
+      "description": "Ranked by Impact = Avg Duration × Count (high latency + high traffic = high impact)",
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 8},
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "queryType": "traceql",
+          "query": "{ span.db.system != \"\" } | select(span.db.query.text, span.db.statement)",
+          "limit": 1000,
+          "tableType": "spans"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {"targetField": "Duration", "destinationType": "number"}
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Trace Service": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Trace Name": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "db.query.text": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Duration": {
+                "aggregations": ["mean", "max", "count"],
+                "operation": "aggregate"
+              }
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "reduce": { "reducer": "sum" },
+            "binary": {
+              "left": "Duration (mean)",
+              "operator": "*",
+              "right": "Duration (count)"
+            },
+            "alias": "Impact"
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [{"field": "Impact", "desc": true}]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "Trace Service": 0,
+              "Trace Name": 1,
+              "db.query.text": 2,
+              "Duration (mean)": 3,
+              "Duration (max)": 4,
+              "Duration (count)": 5,
+              "Impact": 6
+            },
+            "renameByName": {
+              "Trace Service": "Root Service",
+              "Trace Name": "Root Operation",
+              "db.query.text": "SQL Statement",
+              "Duration (mean)": "Avg Duration",
+              "Duration (max)": "Max Duration",
+              "Duration (count)": "Count"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {"show": false}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {"type": "auto"},
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Root Service"},
+            "properties": [
+              {"id": "custom.width", "value": 140}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Root Operation"},
+            "properties": [
+              {"id": "custom.width", "value": 180}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "SQL Statement"},
+            "properties": [
+              {"id": "custom.width", "value": 400}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Avg Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 110}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Max Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 110}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Count"},
+            "properties": [
+              {"id": "unit", "value": "short"},
+              {"id": "custom.width", "value": 70}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Impact"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 110},
+              {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "gradient"}},
+              {"id": "color", "value": {"mode": "continuous-GrYlRd"}}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Highest Impact Queries by Service",
+      "description": "Ranked by Impact = Avg Duration × Count. Service = the service executing the SQL query.",
+      "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8},
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "queryType": "traceql",
+          "query": "{ span.db.system != \"\" } | select(span.db.query.text, span.db.statement)",
+          "limit": 1000,
+          "tableType": "spans"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {"targetField": "Duration", "destinationType": "number"}
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Trace Service": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "db.query.text": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Duration": {
+                "aggregations": ["mean", "max", "count"],
+                "operation": "aggregate"
+              }
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "reduce": { "reducer": "sum" },
+            "binary": {
+              "left": "Duration (mean)",
+              "operator": "*",
+              "right": "Duration (count)"
+            },
+            "alias": "Impact"
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [{"field": "Impact", "desc": true}]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "Trace Service": 0,
+              "db.query.text": 1,
+              "Duration (mean)": 2,
+              "Duration (max)": 3,
+              "Duration (count)": 4,
+              "Impact": 5
+            },
+            "renameByName": {
+              "Trace Service": "Service",
+              "db.query.text": "SQL Statement",
+              "Duration (mean)": "Avg Duration",
+              "Duration (max)": "Max Duration",
+              "Duration (count)": "Count"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {"show": false}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {"type": "auto"},
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Service"},
+            "properties": [
+              {"id": "custom.width", "value": 140}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "SQL Statement"},
+            "properties": [
+              {"id": "custom.width", "value": 500}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Avg Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 110}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Max Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 110}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Count"},
+            "properties": [
+              {"id": "unit", "value": "short"},
+              {"id": "custom.width", "value": 70}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Impact"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 110},
+              {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "gradient"}},
+              {"id": "color", "value": {"mode": "continuous-GrYlRd"}}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Highest Impact Queries by Database",
+      "description": "Ranked by Impact = Avg Duration × Count",
+      "gridPos": {"x": 0, "y": 16, "w": 24, "h": 8},
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "queryType": "traceql",
+          "query": "{ span.db.system != \"\" } | select(span.db.query.text, span.db.statement)",
+          "limit": 1000,
+          "tableType": "spans"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {"targetField": "Duration", "destinationType": "number"}
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "db.system": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "db.query.text": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Duration": {
+                "aggregations": ["mean", "max", "count"],
+                "operation": "aggregate"
+              }
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "reduce": { "reducer": "sum" },
+            "binary": {
+              "left": "Duration (mean)",
+              "operator": "*",
+              "right": "Duration (count)"
+            },
+            "alias": "Impact"
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [{"field": "Impact", "desc": true}]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "db.system": 0,
+              "db.query.text": 1,
+              "Duration (mean)": 2,
+              "Duration (max)": 3,
+              "Duration (count)": 4,
+              "Impact": 5
+            },
+            "renameByName": {
+              "db.system": "Database",
+              "db.query.text": "SQL Statement",
+              "Duration (mean)": "Avg Duration",
+              "Duration (max)": "Max Duration",
+              "Duration (count)": "Count"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {"show": false}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {"type": "auto"},
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Database"},
+            "properties": [
+              {"id": "custom.width", "value": 100}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "SQL Statement"},
+            "properties": [
+              {"id": "custom.width", "value": 500}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Avg Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 110}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Max Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 110}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Count"},
+            "properties": [
+              {"id": "unit", "value": "short"},
+              {"id": "custom.width", "value": 70}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Impact"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 110},
+              {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "gradient"}},
+              {"id": "color", "value": {"mode": "continuous-GrYlRd"}}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Slowest 100 Query Executions (Raw)",
+      "description": "Individual DB query executions sorted by duration",
+      "gridPos": {"x": 0, "y": 24, "w": 24, "h": 12},
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "queryType": "traceql",
+          "query": "{ span.db.system != \"\" } | select(span.db.query.text, span.db.statement)",
+          "limit": 100,
+          "tableType": "spans"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Span ID": true,
+              "Name": true,
+              "db.system": true,
+              "traceIdHidden": true
+            },
+            "indexByName": {
+              "Trace Service": 0,
+              "Trace Name": 1,
+              "db.query.text": 2,
+              "Duration": 3,
+              "Trace ID": 4,
+              "Start time": 5
+            },
+            "renameByName": {
+              "Trace Service": "Service",
+              "Trace Name": "Root Operation",
+              "db.query.text": "SQL Statement",
+              "Duration": "Duration",
+              "Trace ID": "Trace ID",
+              "Start time": "Time"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [{"field": "Duration", "desc": true}]
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {"type": "auto"},
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Service"},
+            "properties": [
+              {"id": "custom.width", "value": 140}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Root Operation"},
+            "properties": [
+              {"id": "custom.width", "value": 180}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "SQL Statement"},
+            "properties": [
+              {"id": "custom.width", "value": 400}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 100},
+              {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "gradient"}},
+              {"id": "color", "value": {"mode": "continuous-GrYlRd"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Trace ID"},
+            "properties": [
+              {"id": "custom.width", "value": 280},
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "View Trace",
+                    "url": "/explore?orgId=1&left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22datasource%22:%7B%22type%22:%22tempo%22,%22uid%22:%22tempo%22%7D,%22queryType%22:%22traceql%22,%22query%22:%22${__value.raw}%22%7D%5D%7D",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

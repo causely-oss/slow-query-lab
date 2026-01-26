@@ -1,0 +1,502 @@
+{
+  "uid": "slowsql-v1",
+  "title": "Slow SQL - By Duration",
+  "description": "Database query duration analysis using TraceQL",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Slowest Queries by Root Operation",
+      "description": "Average, max duration and count by API endpoint and SQL statement",
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 8},
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "queryType": "traceql",
+          "query": "{ span.db.system != \"\" } | select(span.db.query.text, span.db.statement)",
+          "limit": 1000,
+          "tableType": "spans"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {"targetField": "Duration", "destinationType": "number"}
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Trace Name": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "db.query.text": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Duration": {
+                "aggregations": ["mean", "max", "count"],
+                "operation": "aggregate"
+              }
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [{"field": "Duration (mean)", "desc": true}]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Trace Name": "Root Operation",
+              "db.query.text": "SQL Statement",
+              "Duration (mean)": "Avg Duration",
+              "Duration (max)": "Max Duration",
+              "Duration (count)": "Count"
+            },
+            "indexByName": {
+              "Trace Name": 0,
+              "db.query.text": 1,
+              "Duration (mean)": 2,
+              "Duration (max)": 3,
+              "Duration (count)": 4
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {"show": false}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {"type": "auto"},
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Avg Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 120},
+              {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "gradient"}},
+              {"id": "color", "value": {"mode": "continuous-GrYlRd"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Max Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 120}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Count"},
+            "properties": [
+              {"id": "unit", "value": "short"},
+              {"id": "custom.width", "value": 80}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Root Operation"},
+            "properties": [
+              {"id": "custom.width", "value": 180}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "SQL Statement"},
+            "properties": [
+              {"id": "custom.width", "value": 600}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Slowest Queries by Service",
+      "description": "Average, max duration and count by service name and SQL statement",
+      "gridPos": {"x": 0, "y": 8, "w": 24, "h": 8},
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "queryType": "traceql",
+          "query": "{ span.db.system != \"\" } | select(span.db.query.text, span.db.statement)",
+          "limit": 1000,
+          "tableType": "spans"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {"targetField": "Duration", "destinationType": "number"}
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "traceService": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "db.query.text": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Duration": {
+                "aggregations": ["mean", "max", "count"],
+                "operation": "aggregate"
+              }
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [{"field": "Duration (mean)", "desc": true}]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "traceService": "Service",
+              "db.query.text": "SQL Statement",
+              "Duration (mean)": "Avg Duration",
+              "Duration (max)": "Max Duration",
+              "Duration (count)": "Count"
+            },
+            "indexByName": {
+              "Service": 0,
+              "SQL Statement": 1,
+              "Avg Duration": 2,
+              "Max Duration": 3,
+              "Count": 4
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {"show": false}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {"type": "auto"},
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Avg Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 120},
+              {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "gradient"}},
+              {"id": "color", "value": {"mode": "continuous-GrYlRd"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Max Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 120}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Count"},
+            "properties": [
+              {"id": "unit", "value": "short"},
+              {"id": "custom.width", "value": 80}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "traceService"},
+            "properties": [
+              {"id": "custom.width", "value": 150},
+              {"id": "displayName", "value": "Service"}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "SQL Statement"},
+            "properties": [
+              {"id": "custom.width", "value": 600}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Slowest Queries by Database",
+      "description": "Average, max duration and count by database system and SQL statement",
+      "gridPos": {"x": 0, "y": 16, "w": 24, "h": 8},
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "queryType": "traceql",
+          "query": "{ span.db.system != \"\" } | select(span.db.query.text, span.db.statement)",
+          "limit": 1000,
+          "tableType": "spans"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {"targetField": "Duration", "destinationType": "number"}
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "db.system": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "db.query.text": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Duration": {
+                "aggregations": ["mean", "max", "count"],
+                "operation": "aggregate"
+              }
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [{"field": "Duration (mean)", "desc": true}]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "db.system": "Database",
+              "db.query.text": "SQL Statement",
+              "Duration (mean)": "Avg Duration",
+              "Duration (max)": "Max Duration",
+              "Duration (count)": "Count"
+            },
+            "indexByName": {
+              "db.system": 0,
+              "db.query.text": 1,
+              "Duration (mean)": 2,
+              "Duration (max)": 3,
+              "Duration (count)": 4
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {"show": false}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {"type": "auto"},
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Avg Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 120},
+              {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "gradient"}},
+              {"id": "color", "value": {"mode": "continuous-GrYlRd"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Max Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 120}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Count"},
+            "properties": [
+              {"id": "unit", "value": "short"},
+              {"id": "custom.width", "value": 80}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Database"},
+            "properties": [
+              {"id": "custom.width", "value": 120}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "SQL Statement"},
+            "properties": [
+              {"id": "custom.width", "value": 600}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Slowest 100 Query Executions (Raw)",
+      "description": "Individual DB query executions sorted by duration",
+      "gridPos": {"x": 0, "y": 24, "w": 24, "h": 12},
+      "datasource": {"type": "tempo", "uid": "tempo"},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "queryType": "traceql",
+          "query": "{ span.db.system != \"\" } | select(span.db.query.text, span.db.statement)",
+          "limit": 100,
+          "tableType": "spans"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "spanID": true,
+              "traceRootServiceName": true,
+              "traceRootSpanName": true,
+              "statusCode": true,
+              "statusMessage": true,
+              "traceIdHidden": true,
+              "Name": true
+            },
+            "indexByName": {
+              "Trace ID": 0,
+              "Start time": 1,
+              "traceService": 2,
+              "Trace Name": 3,
+              "db.system": 4,
+              "db.query.text": 5,
+              "Duration": 6
+            },
+            "renameByName": {
+              "Trace ID": "Trace ID",
+              "Start time": "Time",
+              "traceService": "Service",
+              "Trace Name": "Root Operation",
+              "db.system": "DB System",
+              "db.query.text": "SQL Statement",
+              "Duration": "Duration"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [{"field": "Duration", "desc": true}]
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "cellOptions": {"type": "auto"},
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Trace ID"},
+            "properties": [
+              {"id": "custom.width", "value": 280},
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "View Trace",
+                    "url": "/explore?orgId=1&left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22datasource%22:%7B%22type%22:%22tempo%22,%22uid%22:%22tempo%22%7D,%22queryType%22:%22traceql%22,%22query%22:%22${__value.raw}%22%7D%5D%7D",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Duration"},
+            "properties": [
+              {"id": "unit", "value": "ns"},
+              {"id": "custom.width", "value": 100},
+              {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "gradient"}},
+              {"id": "color", "value": {"mode": "continuous-GrYlRd"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "SQL Statement"},
+            "properties": [
+              {"id": "custom.width", "value": 400}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Service"},
+            "properties": [
+              {"id": "custom.width", "value": 120}
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

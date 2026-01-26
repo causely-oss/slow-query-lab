@@ -1,0 +1,55 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+  # Normalize query text to remove newlines/tabs and collapse whitespace
+  # This makes the query text usable in Grafana dashboards
+  transform:
+    trace_statements:
+      - context: span
+        statements:
+          # Normalize db.query.text: replace newlines/tabs with space, collapse whitespace
+          - replace_pattern(attributes["db.query.text"], "\\s+", " ")
+          # Normalize db.statement: replace newlines/tabs with space, collapse whitespace  
+          - replace_pattern(attributes["db.statement"], "\\s+", " ")
+          # Trim leading/trailing whitespace
+          - replace_pattern(attributes["db.query.text"], "^\\s+|\\s+$", "")
+          - replace_pattern(attributes["db.statement"], "^\\s+|\\s+$", "")
+
+connectors:
+  spanmetrics:
+    dimensions:
+      - name: db.system
+        default: "unknown"
+      - name: db.statement
+      - name: db.name
+        default: "unknown"
+      - name: db.operation
+    aggregation_cardinality_limit: 1000
+    exemplars:
+      enabled: true
+
+exporters:
+  otlphttp/lgtm:
+    endpoint: http://lgtm:4318
+
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform, batch]
+      exporters: [spanmetrics, otlphttp/lgtm, debug]
+    
+    metrics:
+      receivers: [spanmetrics]
+      processors: [batch]
+      exporters: [otlphttp/lgtm]
