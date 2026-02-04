@@ -8,16 +8,18 @@ This sample accompanies the blog post: [How to Turn Slow Queries into Actionable
 
 This project demonstrates a practical implementation of slow SQL detection by:
 
-1. **Emitting database spans** with OpenTelemetry semantic conventions from Go services
-2. **Distilling metrics** from spans using the OpenTelemetry Collector's `spanmetrics` connector
+1. **Emitting database spans** with [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/db/database-spans/) from Go services
+2. **Distilling metrics** from spans using the OpenTelemetry Collector's [`spanmetricsconnector`](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/connector/spanmetricsconnector)
 3. **Detecting anomalies** using [PromQL-based adaptive thresholds](https://github.com/grafana/promql-anomaly-detection)
-4. **Visualizing** results in Grafana dashboards
+4. **Visualizing** results in [Grafana dashboards](https://grafana.com/oss/grafana/), with [docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm)
 
 ## Prerequisites
 
-- Docker
+- [Docker](https://www.docker.com/)
 
 ## Quick Start
+
+Bring up all the services with `docker-compose`, wait for the load generator to create some traffic, and then go to `http://localhost:3001` to take a look at the dashboards.
 
 ```bash
 # Start all services
@@ -54,8 +56,11 @@ there just for developing the app. You should be most interested in going to the
 Three dashboards are included:
 
 - [**v1**](./slowsql-dashboard-v1.json): Basic slow query metrics
+  ![v1 dashboard showing slow queries by longest duration](./images/slow-queries-by-root-operation.png)
 - [**v2**](./slowsql-dashboard-v1.json): Query impact analysis (latency × call rate)
+  ![v2 dashboard showing slow queries by impact](./images/slow-queries-by-root-operation-with-impact.png)
 - [**v3**](./slowsql-dashboard-v1.json): Anomaly detection with adaptive thresholds
+  ![v3 dashboard showing slow queries by longest duration](./images/slow-query-anomaly.png)
 
 ## Anomaly Detection
 
