@@ -2,7 +2,7 @@
 
 A sample application demonstrating how to detect and monitor slow SQL queries using OpenTelemetry's spanmetrics connector.
 
-This sample accompanies the blog post: [How to Turn Slow Queries into Actionable Reliability Metrics with OpenTelemetry(https://www.causely.ai/blog/how-to-turn-slow-queries-into-actionable-reliability-metrics-with-opentelemetry)
+This sample accompanies the blog post: [How to Turn Slow Queries into Actionable Reliability Metrics with OpenTelemetry](https://www.causely.ai/blog/how-to-turn-slow-queries-into-actionable-reliability-metrics-with-opentelemetry)
 
 ## Overview
 
