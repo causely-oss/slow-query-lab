@@ -27,6 +27,7 @@ connectors:
     dimensions:
       - name: db.system
         default: "unknown"
+      - name: db.query.text
       - name: db.statement
       - name: db.name
         default: "unknown"
