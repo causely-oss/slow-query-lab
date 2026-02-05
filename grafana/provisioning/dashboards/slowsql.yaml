@@ -16,3 +16,8 @@ providers:
     options:
       path: /otel-lgtm/slowsql-dashboard-v3.json
       foldersFromFilesStructure: false
+  - name: "Slow SQL - Unified"
+    type: file
+    options:
+      path: /otel-lgtm/slowsql-dashboard-unified.json
+      foldersFromFilesStructure: false

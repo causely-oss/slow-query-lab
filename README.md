@@ -53,7 +53,7 @@ there just for developing the app. You should be most interested in going to the
 2. Login with `admin` / `admin`
 3. Navigate to **Dashboards** → **Slow SQL Dashboards**
 
-Three dashboards are included:
+Four dashboards are included:
 
 - [**v1**](./slowsql-dashboard-v1.json): Basic slow query metrics
   ![v1 dashboard showing slow queries by longest duration](./images/slow-queries-by-root-operation.png)
@@ -61,6 +61,7 @@ Three dashboards are included:
   ![v2 dashboard showing slow queries by impact](./images/slow-queries-by-root-operation-with-impact.png)
 - [**v3**](./slowsql-dashboard-v1.json): Anomaly detection with adaptive thresholds
   ![v3 dashboard showing slow queries by longest duration](./images/slow-query-anomaly.png)
+- [**Unified**](./slowsql-dashboard-unified.json): Single dashboard combining all three views below (By Duration, Traffic Weighted, Anomaly Detection)
 
 ## Anomaly Detection
 

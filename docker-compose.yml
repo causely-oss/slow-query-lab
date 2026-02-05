@@ -9,6 +9,7 @@ services:
       - ./slowsql-dashboard-v1.json:/otel-lgtm/slowsql-dashboard-v1.json:ro
       - ./slowsql-dashboard-v2.json:/otel-lgtm/slowsql-dashboard-v2.json:ro
       - ./slowsql-dashboard-v3.json:/otel-lgtm/slowsql-dashboard-v3.json:ro
+      - ./slowsql-dashboard-unified.json:/otel-lgtm/slowsql-dashboard-unified.json:ro
       # Provision datasources with exemplar linking to Tempo
       - ./grafana/provisioning/datasources/prometheus-exemplars.yaml:/otel-lgtm/grafana/conf/provisioning/datasources/prometheus-exemplars.yaml:ro
       # Mount Prometheus rules for anomaly detection
